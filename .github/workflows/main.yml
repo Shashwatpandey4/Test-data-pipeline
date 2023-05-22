@@ -1,0 +1,44 @@
+name: Data Pipeline
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  run_pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Google search results extraction
+        run: python google_search_results.py
+
+      - name: Authenticate with Kaggle
+        run: |
+          pip install kaggle
+          echo ${{ secrets.KAGGLE_API_KEY }} > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Upload Parquet file to Kaggle
+        run: kaggle datasets version -p https://www.kaggle.com/datasets/shashwat90/test-data-pipeline/data -m "Data updated" -r kaggle/working -q
+
+      - name: Clean up Parquet file
+        run: rm https://www.kaggle.com/datasets/shashwat90/test-data-pipeline/data
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Update data"
+          git push
